@@ -3,6 +3,9 @@
 #include <thread>
 #include <unistd.h>
 #include <sys/syscall.h>
+#ifdef __FreeBSD__
+#include <pthread_np.h>
+#endif
 
 namespace trantor
 {
@@ -74,23 +77,23 @@ void Logger::formatTime()
     }
     logStream_ << T(lastTimeString_, 17);
     char tmp[32];
-#ifdef __linux__
-    sprintf(tmp, ".%06lu UTC ", microSec);
-#else
-    sprintf(tmp, ".%06llu UTC ", microSec);
-#endif
+    sprintf(tmp, ".%06llu UTC ", static_cast<long long unsigned int>(microSec));
     logStream_ << T(tmp, 12);
 #ifdef __linux__
     if (threadId_ == 0)
         threadId_ = static_cast<pid_t>(::syscall(SYS_gettid));
-    logStream_ << threadId_;
+#elif defined __FreeBSD__
+    if (threadId_ == 0)
+    {
+        threadId_ = pthread_getthreadid_np();
+    }
 #else
     if (threadId_ == 0)
     {
         pthread_threadid_np(NULL, &threadId_);
     }
-    logStream_ << threadId_;
 #endif
+    logStream_ << threadId_;
 }
 static const char *logLevelStr[Logger::LogLevel::NUM_LOG_LEVELS] = {
     " TRACE ",
