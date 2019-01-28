@@ -1,9 +1,19 @@
-//
-// Created by antao on 2017/1/24.
-//
+/**
+ *
+ *  Socket.h
+ *  An Tao
+ *
+ *  Public header file in trantor lib.
+ * 
+ *  Copyright 2018, An Tao.  All rights reserved.
+ *  Use of this source code is governed by a BSD-style license
+ *  that can be found in the License file.
+ *
+ *
+ */
 
-#ifndef TRANTOR_SOCKET_H
-#define TRANTOR_SOCKET_H
+#pragma once
+
 #include <trantor/utils/NonCopyable.h>
 #include <trantor/net/InetAddress.h>
 #include <trantor/utils/Logger.h>
@@ -13,6 +23,7 @@
 
 namespace trantor
 {
+
 class Socket : NonCopyable
 {
   public:
@@ -80,7 +91,7 @@ class Socket : NonCopyable
     }
     ~Socket()
     {
-        LOG_TRACE << "Socket deconstructed";
+        LOG_TRACE << "Socket deconstructed:" << sockFd_;
         if (sockFd_ >= 0)
             close(sockFd_);
     }
@@ -136,6 +147,5 @@ class Socket : NonCopyable
         (void)ret;
     }
 };
-} // namespace trantor
 
-#endif //TRANTOR_SOCKET_H
+} // namespace trantor
