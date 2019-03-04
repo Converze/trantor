@@ -15,7 +15,7 @@
 #pragma once
 
 //token from muduo lib
-
+#include <trantor/utils/config.h>
 #include <trantor/utils/NonCopyable.h>
 
 #include <assert.h>
@@ -36,7 +36,7 @@ class FixedBuffer : NonCopyable
 {
   public:
     FixedBuffer()
-        : cur_(data_)
+        : _cur(_data)
     {
         setCookie(cookieStart);
     }
@@ -50,40 +50,40 @@ class FixedBuffer : NonCopyable
     {
         if ((size_t)(avail()) > len)
         {
-            memcpy(cur_, buf, len);
-            cur_ += len;
+            memcpy(_cur, buf, len);
+            _cur += len;
             return true;
         }
         return false;
     }
 
-    const char *data() const { return data_; }
-    int length() const { return static_cast<int>(cur_ - data_); }
+    const char *data() const { return _data; }
+    int length() const { return static_cast<int>(_cur - _data); }
 
-    // write to data_ directly
-    char *current() { return cur_; }
-    int avail() const { return static_cast<int>(end() - cur_); }
-    void add(size_t len) { cur_ += len; }
+    // write to _data directly
+    char *current() { return _cur; }
+    int avail() const { return static_cast<int>(end() - _cur); }
+    void add(size_t len) { _cur += len; }
 
-    void reset() { cur_ = data_; }
-    void bzero() { ::bzero(data_, sizeof data_); }
+    void reset() { _cur = _data; }
+    void bzero() { memset(_data, 0, sizeof(_data)); }
 
     // for used by GDB
     const char *debugString();
     void setCookie(void (*cookie)()) { cookie_ = cookie; }
     // for used by unit test
-    std::string toString() const { return std::string(data_, length()); }
-    //StringPiece toStringPiece() const { return StringPiece(data_, length()); }
+    std::string toString() const { return std::string(_data, length()); }
+    //StringPiece toStringPiece() const { return StringPiece(_data, length()); }
 
   private:
-    const char *end() const { return data_ + sizeof data_; }
+    const char *end() const { return _data + sizeof _data; }
     // Must be outline function for cookies.
     static void cookieStart();
     static void cookieEnd();
 
     void (*cookie_)();
-    char data_[SIZE];
-    char *cur_;
+    char _data[SIZE];
+    char *_cur;
 };
 
 } // namespace detail
@@ -128,6 +128,26 @@ class LogStream : NonCopyable
 
     // self& operator<<(signed char);
     // self& operator<<(unsigned char);
+    template <int N>
+    self &operator<<(const char (&buf)[N])
+    {
+        assert(strnlen(buf, N) == N - 1);
+        append(buf, N - 1);
+        return *this;
+    }
+
+    self &operator<<(char *str)
+    {
+        if (str)
+        {
+            append(str, strlen(str));
+        }
+        else
+        {
+            append("(null)", 6);
+        }
+        return *this;
+    }
 
     self &operator<<(const char *str)
     {
@@ -138,6 +158,15 @@ class LogStream : NonCopyable
         else
         {
             append("(null)", 6);
+        }
+        return *this;
+    }
+
+    self &operator<<(const string_view &buf)
+    {
+        if (!buf.empty())
+        {
+            append(buf.data(), buf.length());
         }
         return *this;
     }
@@ -153,25 +182,13 @@ class LogStream : NonCopyable
         return *this;
     }
 
-    //  self& operator<<(const StringPiece& v)
-    //  {
-    //    buffer_.append(v.data(), v.size());
-    //    return *this;
-    //  }
-
-    //  self& operator<<(const Buffer& v)
-    //  {
-    //    *this << v.toStringPiece();
-    //    return *this;
-    //  }
-
     void append(const char *data, int len)
     {
         if (_exBuffer.empty())
         {
-            if (!buffer_.append(data, len))
+            if (!_buffer.append(data, len))
             {
-                _exBuffer.append(buffer_.data(), buffer_.length());
+                _exBuffer.append(_buffer.data(), _buffer.length());
                 _exBuffer.append(data, len);
             }
         }
@@ -180,26 +197,27 @@ class LogStream : NonCopyable
             _exBuffer.append(data, len);
         }
     }
-    //const Buffer& buffer() const { return buffer_; }
+    //const Buffer& buffer() const { return _buffer; }
     const char *bufferData() const
     {
         if (!_exBuffer.empty())
         {
             return _exBuffer.data();
         }
-        return buffer_.data();
+        return _buffer.data();
     }
+
     size_t bufferLength() const
     {
         if (!_exBuffer.empty())
         {
             return _exBuffer.length();
         }
-        return buffer_.length();
+        return _buffer.length();
     }
     void resetBuffer()
     {
-        buffer_.reset();
+        _buffer.reset();
         _exBuffer.clear();
     }
 
@@ -209,7 +227,7 @@ class LogStream : NonCopyable
     template <typename T>
     void formatInteger(T);
 
-    Buffer buffer_;
+    Buffer _buffer;
     std::string _exBuffer;
     static const int kMaxNumericSize = 32;
 };
@@ -220,12 +238,12 @@ class Fmt // : boost::noncopyable
     template <typename T>
     Fmt(const char *fmt, T val);
 
-    const char *data() const { return buf_; }
-    int length() const { return length_; }
+    const char *data() const { return _buf; }
+    int length() const { return _length; }
 
   private:
-    char buf_[32];
-    int length_;
+    char _buf[32];
+    int _length;
 };
 
 inline LogStream &operator<<(LogStream &s, const Fmt &fmt)
